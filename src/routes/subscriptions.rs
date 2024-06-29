@@ -14,7 +14,7 @@ pub async fn subscribe(
     _form: web::Form<FormData>,
     _pool : web::Data<PgPool>
 ) -> HttpResponse {
-    sqlx::query!(
+    match sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
@@ -24,9 +24,14 @@ pub async fn subscribe(
         _form.name,
         Utc::now()
     )
-    // We use `get_ref` to get an immutable reference to the `PgConnection`
-    // wrapped by `web::Data`.  
     .execute(_pool.get_ref())
-    .await;
-    HttpResponse::Ok().finish()
+    .await
+    {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(e) => {
+            println!("Server error {}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+
+    }
 }
